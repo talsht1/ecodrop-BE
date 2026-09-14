@@ -1,0 +1,389 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "EcoDrop API",
+    "version": "1.0.0",
+    "description": "Nearest recycling bin lookup API powered by PostGIS."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "Bin": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "address",
+          "type",
+          "latitude",
+          "longitude"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 1,
+            "description": "Display address for the map popup; null if unknown.",
+            "example": "Central Park, New York, NY"
+          },
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "glass",
+              "paper",
+              "plastic",
+              "metal",
+              "electronics",
+              "mixed",
+              null
+            ],
+            "description": "Stable map icon key; use a generic icon when null.",
+            "example": "paper"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "distanceMeters": {
+            "type": "number"
+          }
+        }
+      },
+      "NearestBinResponse": {
+        "type": "object",
+        "required": [
+          "nearestBin",
+          "latitude",
+          "longitude",
+          "distanceMeters"
+        ],
+        "properties": {
+          "nearestBin": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Bin"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "distanceMeters"
+                ]
+              }
+            ]
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "distanceMeters": {
+            "type": "number"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "Identity": {
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "environment"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "ecodrop-api"
+          },
+          "version": {
+            "type": "string",
+            "example": "1.0.0"
+          },
+          "environment": {
+            "type": "string",
+            "example": "development"
+          }
+        }
+      },
+      "Health": {
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version",
+          "uptimeSeconds"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "service": {
+            "type": "string",
+            "example": "ecodrop-api"
+          },
+          "version": {
+            "type": "string",
+            "example": "1.0.0"
+          },
+          "uptimeSeconds": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "Readiness": {
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version",
+          "database"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_ready"
+            ]
+          },
+          "service": {
+            "type": "string",
+            "example": "ecodrop-api"
+          },
+          "version": {
+            "type": "string",
+            "example": "1.0.0"
+          },
+          "database": {
+            "type": "object",
+            "required": [
+              "status",
+              "latencyMs",
+              "currentTime",
+              "serverVersion"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "connected",
+                  "disconnected"
+                ]
+              },
+              "latencyMs": {
+                "type": "number",
+                "description": "Database probe duration in milliseconds."
+              },
+              "currentTime": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "serverVersion": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "error": {
+            "type": "string",
+            "description": "Present when the readiness probe fails."
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/whoami": {
+      "get": {
+        "summary": "Application identity",
+        "responses": {
+          "200": {
+            "description": "Service name, version, and environment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Identity"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Process liveness (does not query the database)",
+        "responses": {
+          "200": {
+            "description": "API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Database readiness, query timing, and PostgreSQL version",
+        "responses": {
+          "200": {
+            "description": "Database is reachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database readiness check failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bins": {
+      "get": {
+        "summary": "List all recycling bins",
+        "responses": {
+          "200": {
+            "description": "A collection of bins",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Bin"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Database query or bin data validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bins/nearest": {
+      "get": {
+        "summary": "Find the nearest recycling bin",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lat",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "description": "Latitude in decimal degrees"
+          },
+          {
+            "in": "query",
+            "name": "lng",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "description": "Longitude in decimal degrees"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The nearest recycling bin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NearestBinResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid latitude or longitude",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No recycling bins were found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Database query or bin data validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": []
+}
