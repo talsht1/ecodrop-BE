@@ -1,6 +1,6 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 const path = require('node:path');
-const { BIN_TYPES } = require('./schemas/bin');
+const { BIN_TYPES, CREATE_BIN_SCHEMA } = require('./schemas/bin');
 const pkg = require('../package.json');
 
 const options = {
@@ -19,6 +19,7 @@ const options = {
     ],
     components: {
       schemas: {
+        CreateBinRequest: CREATE_BIN_SCHEMA,
         Bin: {
           type: 'object',
           required: ['id', 'name', 'address', 'type', 'latitude', 'longitude'],

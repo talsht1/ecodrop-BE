@@ -6,6 +6,7 @@ const pkg = require('../package.json');
 const config = require('./config');
 const { swaggerSpec } = require('./swagger');
 const { BIN_TYPES } = require('./schemas/bin');
+const { validateCreateBin } = require('./middleware/validate-create-bin');
 
 function parseCoordinate(value, name) {
   if (value === undefined || value === null || value === '') {
@@ -233,6 +234,66 @@ function createApp({ pool } = {}) {
 
   /**
    * @openapi
+   * /api/bins:
+   *   post:
+   *     summary: Create and persist a recycling bin
+   *     description: Public write endpoint. Each request creates a new bin; duplicate names are allowed.
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/CreateBinRequest'
+   *     responses:
+   *       201:
+   *         description: Created bin with its database-generated ID
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Bin'
+   *       400:
+   *         description: Invalid JSON or bin fields
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *       413:
+   *         description: JSON body exceeds the 100 KB limit
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *       415:
+   *         description: Unsupported content type, charset, or encoding
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *       500:
+   *         description: Failed to create a bin
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   */
+  app.post('/api/bins', validateCreateBin, async (req, res) => {
+    const { name, address, type, latitude, longitude } = res.locals.createBin;
+    try {
+      const result = await databasePool.query(`
+        INSERT INTO bins (name, address, type, location)
+        VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326))
+        RETURNING id, name, address, type,
+                  ST_X(location) AS longitude, ST_Y(location) AS latitude;
+      `, [name, address, type, longitude, latitude]);
+      return res.status(201).json(validateBinRecord(result.rows[0]));
+    } catch (error) {
+      console.error('Failed to create recycling bin:', error);
+      return res.status(500).json({ error: 'Failed to create recycling bin.' });
+    }
+  });
+
+  /**
+   * @openapi
    * /api/bins/nearest:
    *   get:
    *     summary: Find the nearest recycling bin
@@ -347,6 +408,15 @@ function createApp({ pool } = {}) {
   });
 
   app.use((err, req, res, next) => {
+    if (err.type === 'entity.parse.failed') {
+      return res.status(400).json({ error: 'Body must contain valid JSON.' });
+    }
+    if (err.type === 'entity.too.large') {
+      return res.status(413).json({ error: 'JSON body exceeds the 100 KB limit.' });
+    }
+    if (err.type === 'charset.unsupported' || err.type === 'encoding.unsupported') {
+      return res.status(415).json({ error: 'Unsupported request charset or encoding.' });
+    }
     console.error(err);
     const message = err && err.message ? err.message : 'Failed to fetch nearest recycling bin.';
     res.status(500).json({

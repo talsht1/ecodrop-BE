@@ -4,7 +4,7 @@ A Node.js + Express API for locating the nearest recycling bin using PostGIS pro
 
 ## What we built
 
-The backend provides bin listing and nearest-bin lookup, coordinate validation
+The backend provides bin creation, listing and nearest-bin lookup, coordinate validation
 middleware, database record validation, configurable CORS, Swagger documentation,
 and mock-database API tests. Bin responses include coordinates, an address for
 map popups, and a stable material type for map icons.
@@ -264,6 +264,55 @@ a generic icon); unknown addresses are `null` (display "Address unavailable").
 Non-null addresses must be nonblank and types must match an exact supported key.
 Both fields are always present in API responses. Seed addresses and material
 types are illustrative mock data, not verified recycling facilities.
+
+### Create a bin through the API
+
+Send `POST /api/bins` with `Content-Type: application/json`.
+Required fields are `name`, `latitude`, and `longitude`. `address` and `type`
+may be omitted or explicitly `null` for unknown values.
+
+```json
+{
+  "name": "New Moran Collection Point",
+  "address": "Moran, Israel",
+  "type": "mixed",
+  "latitude": 32.9194,
+  "longitude": 35.3956
+}
+```
+
+The API returns **201 Created** with the saved bin object, including its
+database-generated `id`, name, address, type, latitude, and longitude.
+It is persisted in PostgreSQL and available from the list and nearest-bin
+endpoints without a restart. This does not edit the seed file.
+
+Try it through Swagger's **POST /api/bins → Try it out**, or locally in PowerShell:
+
+```powershell
+$body = @{
+  name = 'New Moran Collection Point'
+  latitude = 32.9194
+  longitude = 35.3956
+} | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri 'http://localhost:3000/api/bins' -ContentType 'application/json' -Body $body
+```
+
+Name/address strings are trimmed. Names must be nonblank and at most 255
+characters; supplied addresses must be nonblank. Types must match a supported
+key exactly. Coordinates must be finite JSON numbers (not numeric strings),
+within latitude -90..90 and longitude -180..180. Unknown fields, including
+client-supplied `id`, are rejected. Null characters are not accepted in text.
+
+Invalid fields or malformed JSON return **400**, oversized JSON bodies
+(over 100 KB) return **413**, unsupported content types/encodings return **415**,
+and database failures return **500** with a generic error.
+Each successful request creates a new row; duplicate names/locations are allowed.
+Unlike the seed script, this endpoint does not deduplicate requests. Avoid
+automatic retries that could create duplicate bins.
+
+**This endpoint has no authentication or authorization.** Once deployed,
+anyone who can reach it can add bins. CORS does not restrict direct API clients.
+The existing schema already supports insertion; no new database migration is needed.
 
 ## Health and readiness
 
