@@ -26,7 +26,14 @@ FROM (
     ('Moran Paper Demo Point', 'Mock location 3, Moran, Misgav, Israel', 'paper', ST_SetSRID(ST_MakePoint(35.3965, 32.9200), 4326)),
     ('Moran Plastic Demo Point', 'Mock location 4, Moran, Misgav, Israel', 'plastic', ST_SetSRID(ST_MakePoint(35.3950, 32.9186), 4326)),
     ('Moran Metal Demo Point', 'Mock location 5, Moran, Misgav, Israel', 'metal', ST_SetSRID(ST_MakePoint(35.3970, 32.9190), 4326)),
-    ('Moran Electronics Demo Point', 'Mock location 6, Moran, Misgav, Israel', 'electronics', ST_SetSRID(ST_MakePoint(35.3940, 32.9190), 4326))
+    ('Moran Electronics Demo Point', 'Mock location 6, Moran, Misgav, Israel', 'electronics', ST_SetSRID(ST_MakePoint(35.3940, 32.9190), 4326)),
+    -- Illustrative positions around Almagor, not verified recycling facilities.
+    ('Almagor Mixed Demo Point', 'Mock location 1, Almagor, Emek HaYarden, Israel', 'mixed', ST_SetSRID(ST_MakePoint(35.6021, 32.9125), 4326)),
+    ('Almagor Glass Demo Point', 'Mock location 2, Almagor, Emek HaYarden, Israel', 'glass', ST_SetSRID(ST_MakePoint(35.6012, 32.9130), 4326)),
+    ('Almagor Paper Demo Point', 'Mock location 3, Almagor, Emek HaYarden, Israel', 'paper', ST_SetSRID(ST_MakePoint(35.6030, 32.9131), 4326)),
+    ('Almagor Plastic Demo Point', 'Mock location 4, Almagor, Emek HaYarden, Israel', 'plastic', ST_SetSRID(ST_MakePoint(35.6015, 32.9118), 4326)),
+    ('Almagor Metal Demo Point', 'Mock location 5, Almagor, Emek HaYarden, Israel', 'metal', ST_SetSRID(ST_MakePoint(35.6032, 32.9120), 4326)),
+    ('Almagor Electronics Demo Point', 'Mock location 6, Almagor, Emek HaYarden, Israel', 'electronics', ST_SetSRID(ST_MakePoint(35.6008, 32.9124), 4326))
 ) AS v(name, address, type, location)
 WHERE NOT EXISTS (
   SELECT 1 FROM bins b WHERE b.name = v.name
