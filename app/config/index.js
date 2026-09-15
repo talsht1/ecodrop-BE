@@ -13,6 +13,13 @@ const config = {
   cors: {
     origin: process.env.CORS_ORIGIN || '*'
   },
+  reports: {
+    targetEmail: process.env.REPORT_TARGET_EMAIL || '',
+    fromEmail: process.env.REPORT_FROM_EMAIL || '',
+    apiKey: process.env.RESEND_API_KEY || '',
+    apiUrl: 'https://api.resend.com/emails',
+    timeoutMs: 10000
+  },
   postgres: {
     db: process.env.POSTGRES_DB || 'ecodrop',
     user: process.env.POSTGRES_USER || 'postgres',

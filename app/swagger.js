@@ -1,6 +1,7 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 const path = require('node:path');
 const { BIN_TYPE_SCHEMA, CREATE_BIN_SCHEMA } = require('./schemas/bin');
+const { REPORT_SCHEMA } = require('./schemas/report');
 const pkg = require('../package.json');
 
 const options = {
@@ -19,6 +20,15 @@ const options = {
     ],
     components: {
       schemas: {
+        ReportRequest: REPORT_SCHEMA,
+        ReportSubmitted: {
+          type: 'object',
+          required: ['success', 'message'],
+          properties: {
+            success: { type: 'boolean', enum: [true] },
+            message: { type: 'string', enum: ['Report submitted successfully'] }
+          }
+        },
         CreateBinRequest: CREATE_BIN_SCHEMA,
         Bin: {
           type: 'object',
@@ -106,7 +116,7 @@ const options = {
       }
     }
   },
-  apis: [path.join(__dirname, 'server.js')]
+  apis: [path.join(__dirname, 'server.js'), path.join(__dirname, 'routes', 'reports.js')]
 };
 
 module.exports = {

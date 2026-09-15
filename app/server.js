@@ -7,6 +7,7 @@ const config = require('./config');
 const { swaggerSpec } = require('./swagger');
 const { BIN_TYPES } = require('./schemas/bin');
 const { validateCreateBin } = require('./middleware/validate-create-bin');
+const { createReportsRouter } = require('./routes/reports');
 
 function parseCoordinate(value, name) {
   if (value === undefined || value === null || value === '') {
@@ -84,12 +85,13 @@ function validateBinRecord(bin) {
   };
 }
 
-function createApp({ pool } = {}) {
+function createApp({ pool, reportMailer, reportLogger } = {}) {
   const app = express();
   const databasePool = pool || new Pool({ connectionString: config.database.url });
 
   app.use(cors({ origin: config.cors.origin === '*' ? true : config.cors.origin }));
   app.use(express.json());
+  app.use('/api/reports', createReportsRouter({ mailer: reportMailer, logger: reportLogger }));
 
   app.use('/docs', swaggerUi.serve);
   app.get('/docs', swaggerUi.setup(swaggerSpec));

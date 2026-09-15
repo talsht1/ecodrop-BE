@@ -11,4 +11,10 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
+      - key: REPORT_TARGET_EMAIL
+        sync: false
+      - key: REPORT_FROM_EMAIL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
     autoDeploy: true

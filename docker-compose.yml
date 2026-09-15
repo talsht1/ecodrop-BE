@@ -31,6 +31,9 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@db:5432/ecodrop
       CORS_ORIGIN: '*'
+      REPORT_TARGET_EMAIL: ${REPORT_TARGET_EMAIL:-}
+      REPORT_FROM_EMAIL: ${REPORT_FROM_EMAIL:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
     ports:
       - '3000:3000'
     volumes:

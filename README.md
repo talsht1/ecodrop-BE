@@ -9,6 +9,9 @@ middleware, database record validation, configurable CORS, Swagger documentation
 and mock-database API tests. Bin responses include coordinates, an address for
 map popups, and a stable material type for map icons.
 
+`POST /api/reports` accepts map incident reports with optional images and
+dispatches them to a configured email address in the background using Resend.
+
 We added `/whoami` for application identity, `/health` for process liveness,
 and `/ready` for database connectivity, timing, and PostgreSQL version.
 Docker supports either a local PostGIS database with Node running on the host,
@@ -37,6 +40,9 @@ independently. Authentication and authorization are not implemented.
 - `app/scripts/seed-sample-data.js` – Seeds the database with sample bin data.
 - `app/tests/server.test.js` – API test coverage.
 - `app/schemas/bin.js` - Supported bin type keys shared by validation and Swagger.
+- `app/routes/reports.js` - Report submission and non-blocking email dispatch.
+- `app/middleware/validate-report.js` - Multipart/image parsing and report validation.
+- `app/services/report-mailer.js` - Resend HTTPS email integration.
 - `openapi.json` - Exported API contract for frontend integration.
 - `Dockerfile` - API container image.
 - `docker-compose.yml` – Local Postgres/PostGIS container setup.
@@ -116,6 +122,9 @@ Do not add `--volumes` unless you intend to delete the local database volume.
 - `POSTGRES_DB` – Local database name for Docker Compose
 - `POSTGRES_USER` – Local database user
 - `POSTGRES_PASSWORD` – Local database password
+- `REPORT_TARGET_EMAIL` - Permanent destination for all report emails (single plain email address)
+- `REPORT_FROM_EMAIL` - Sender address authorized by Resend (single plain email address)
+- `RESEND_API_KEY` - Resend API key; server-side only, never exposed to the frontend
 
 The current Compose file explicitly sets database name `ecodrop`, user
 `postgres`, password `postgres`, and host ports 5432/3000. Changing `.env`
@@ -365,6 +374,97 @@ anyone who can reach it can add bins. CORS does not restrict direct API clients.
 The schema supports insertion after all pending migrations, including the
 type-replacement migration, have been applied.
 
+## Report a map incident
+
+Send `POST /api/reports` as **multipart/form-data**, including the clicked
+map coordinates. This endpoint is independent of the bins table and does not
+require a bin ID.
+
+| Form field | Required | Format |
+| --- | --- | --- |
+| `latitude` | Yes | Decimal text, -90 through 90 |
+| `longitude` | Yes | Decimal text, -180 through 180 |
+| `reporterName` | No | Text, up to 200 characters |
+| `incidentTime` | No | RFC 3339 timestamp with timezone, e.g. `2026-09-15T09:00:00+03:00` |
+| `message` | No | Free text, up to 10,000 characters |
+| `image` | No | One JPEG, PNG, or WebP file, at most 5 MiB (5,242,880 bytes) |
+
+Omit unknown optional fields; empty optional text is treated as absent. Text is
+trimmed, null characters are rejected, and invalid calendar dates are rejected.
+Images are checked by declared content type and file signature, held in memory,
+and attached to the email with a server-generated filename. They are not stored
+on disk, in Supabase, or at a public URL. Duplicate/unknown fields, multiple
+images, and URL/base64 text in place of a file are rejected.
+
+Frontend example (use your configured API base URL):
+
+```javascript
+const form = new FormData();
+form.append('latitude', String(clickedLocation.latitude));
+form.append('longitude', String(clickedLocation.longitude));
+if (reporterName) form.append('reporterName', reporterName);
+if (incidentTime) form.append('incidentTime', new Date(incidentTime).toISOString());
+if (message) form.append('message', message);
+if (imageFile) form.append('image', imageFile);
+
+const response = await fetch(`${apiBaseUrl}/api/reports`, {
+  method: 'POST',
+  body: form
+});
+const result = await response.json();
+if (!response.ok) throw new Error(result.error);
+```
+
+Do **not** set `Content-Type` manually when using browser `FormData`; the browser
+must include the multipart boundary. Convert a local datetime picker value to a
+timestamp with a timezone before submission. The email includes the selected
+location, any supplied reporter/time/message, and a separate server submission time.
+
+After upload and validation, configured report submissions return **200 OK**:
+
+```json
+{ "success": true, "message": "Report submitted successfully" }
+```
+
+The route schedules dispatch with `setImmediate` and does not wait for the email
+provider response. A 200 means **accepted for best-effort dispatch**, not delivered.
+Provider failures/timeouts are logged with an internal report ID, without the
+image/message contents, and cannot change a response already sent.
+No database record, persistent queue, automatic retry, or delivery-status endpoint
+is created. A process restart, redeploy, or Render spin-down can lose an in-flight
+report. Use a durable queue/outbox in a future change if guaranteed delivery is needed.
+
+Invalid fields/multipart/image signatures return **400**, images over 5 MiB or
+text upload fields over 40,000 bytes return **413**, unsupported request/image
+content types return **415**, and missing/invalid email configuration returns **503**
+instead of pretending the report was accepted. Other API endpoints remain usable
+when report email is not configured. `/ready` does not check email availability.
+
+### Configure report email
+
+We use the [Resend HTTPS API](https://resend.com/docs/api-reference/emails/send-email)
+instead of SMTP because [Render Free blocks outbound SMTP ports 25, 465, and 587](https://render.com/docs/free).
+The provider endpoint and 10-second request timeout live in `app/config/index.js`.
+
+1. Create a Resend account and generate an API key authorized to send email.
+2. Verify a sending domain in Resend and choose a sender on that domain.
+3. Set `RESEND_API_KEY`, `REPORT_FROM_EMAIL`, and `REPORT_TARGET_EMAIL` in the
+   server environment. Use `.env` locally or **Render service → Environment**
+   for the deployed API. These are not Supabase/GitHub migration secrets.
+4. Restart the local process, or deploy the updated Render environment.
+   For Docker, rebuild/recreate the API with `docker compose up --build -d api`.
+5. Submit a report through Swagger and inspect the target inbox, Resend dashboard,
+   and API logs for delivery failures.
+
+For initial testing, Resend's `onboarding@resend.dev` sender can send only to
+the email address associated with your Resend account. To target another inbox,
+use a verified domain. Set the destination only through `REPORT_TARGET_EMAIL`;
+clients cannot supply or override recipients.
+
+This remains a public endpoint without authentication or rate limiting. Only
+enable it when you accept that public submissions consume your email quota.
+No database migration is needed for reports.
+
 ## Health and readiness
 
 The API exposes two distinct probes for operational monitoring:
@@ -406,6 +506,10 @@ Changing seed data alone does not change the API contract.
 Run `npm test`. The API tests inject mocked database pools and do not require a
 running PostgreSQL instance. They cover bin metadata, invalid records and input,
 identity, liveness, database readiness/failure, and the map-related Swagger contract.
+Report tests cover optional fields and images, invalid uploads, fixed recipients,
+background failures/timeouts, and a pending email that does not delay the response.
+Email provider calls are mocked; the suite sends no real email and requires no
+Resend credentials.
 
 An optional PostGIS migration test exercises the complete migration chain,
 legacy mapping, null preservation, database constraints, and seed reruns using

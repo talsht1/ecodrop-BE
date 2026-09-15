@@ -13,6 +13,70 @@
   ],
   "components": {
     "schemas": {
+      "ReportRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "description": "Clicked map latitude; sent as a decimal text field in FormData."
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "description": "Clicked map longitude; sent as a decimal text field in FormData."
+          },
+          "reporterName": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Optional reporter name; empty text is treated as absent."
+          },
+          "incidentTime": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 64,
+            "description": "Optional RFC 3339 timestamp with timezone, e.g. 2026-09-15T09:00:00+03:00. Empty text is treated as absent."
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 10000,
+            "description": "Optional free text; empty text is treated as absent."
+          },
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "description": "Optional single JPEG, PNG, or WebP image, at most 5 MiB (5,242,880 bytes)."
+          }
+        }
+      },
+      "ReportSubmitted": {
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "message": {
+            "type": "string",
+            "enum": [
+              "Report submitted successfully"
+            ]
+          }
+        }
+      },
       "CreateBinRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -498,6 +562,79 @@
           },
           "500": {
             "description": "Database query or bin data validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports": {
+      "post": {
+        "summary": "Submit a map incident report for background email delivery",
+        "description": "Requires only the clicked location. Responds after upload/validation without waiting for email delivery. Best effort only; a 200 response does not guarantee delivery.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              },
+              "encoding": {
+                "image": {
+                  "contentType": "image/jpeg, image/png, image/webp"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Report accepted for background dispatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportSubmitted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fields, duplicate fields, image signature, or multipart data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Image exceeds 5 MiB or a text field exceeds its upload limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Expected multipart/form-data with an optional JPEG, PNG, or WebP image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Report email configuration is unavailable",
             "content": {
               "application/json": {
                 "schema": {
