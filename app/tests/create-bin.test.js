@@ -9,7 +9,7 @@ const { swaggerSpec } = require('../swagger');
 const validBody = {
   name: 'New Collection Point',
   address: 'Moran, Israel',
-  type: 'mixed',
+  type: 'general_waste',
   latitude: 32.9194,
   longitude: 35.3956
 };
@@ -28,7 +28,10 @@ function createMockPool(t) {
   return { query };
 }
 
-for (const type of ['glass', 'paper', 'plastic', 'metal', 'electronics', 'mixed', null]) {
+for (const type of [
+  'general_waste', 'packaging', 'glass', 'paper', 'textile', 'electronics',
+  'cardboard', 'bulky_waste', 'bottle_recycling_machine', 'yard_waste', null
+]) {
   test(`POST /api/bins saves type ${type} and returns a generated ID`, async (t) => {
     const pool = createMockPool(t);
     const app = createApp({ pool });
@@ -64,7 +67,7 @@ test('POST /api/bins trims text and keeps SQL-like input in parameters', async (
   assert.equal(params[0], name);
 });
 
-for (const metadata of [{}, { address: null, type: null }, { address: null, type: 'mixed' }, { address: 'Moran, Israel' }]) {
+for (const metadata of [{}, { address: null, type: null }, { address: null, type: 'general_waste' }, { address: 'Moran, Israel' }]) {
   test(`POST /api/bins allows optional metadata ${JSON.stringify(metadata)}`, async (t) => {
     const pool = createMockPool(t);
     const response = await request(createApp({ pool })).post('/api/bins').send({
@@ -90,7 +93,7 @@ const invalidBodies = [
   {}, [], null, 'not an object', 42,
   ...[undefined, null, '', ' \t ', 12, {}, 'x'.repeat(256), 'bin\0name'].map(name => ({ ...validBody, name })),
   ...['', ' \n ', 12, [], {}, 'address\0'].map(address => ({ ...validBody, address })),
-  ...['wood', 'Paper', ' mixed ', '', false, []].map(type => ({ ...validBody, type })),
+  ...['mixed', 'plastic', 'metal', 'wood', 'Paper', ' packaging ', '', false, []].map(type => ({ ...validBody, type })),
   ...[undefined, null, '', '32.9194', true, [], {}, -90.01, 90.01].map(latitude => ({ ...validBody, latitude })),
   ...[undefined, null, '', '35.3956', true, [], {}, -180.01, 180.01].map(longitude => ({ ...validBody, longitude })),
   { ...validBody, id: 17 },

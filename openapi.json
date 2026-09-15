@@ -41,14 +41,19 @@
             "type": "string",
             "nullable": true,
             "enum": [
+              "general_waste",
+              "packaging",
               "glass",
               "paper",
-              "plastic",
-              "metal",
+              "textile",
               "electronics",
-              "mixed",
+              "cardboard",
+              "bulky_waste",
+              "bottle_recycling_machine",
+              "yard_waste",
               null
             ],
+            "description": "Stable map icon key; null means unknown (use a generic icon).\n- general_waste: Green Bin: general / mixed municipal waste.\n- packaging: Orange Packaging Bin: plastic, metal, and beverage carton packaging.\n- glass: Purple Glass Bin: glass bottles and food jars.\n- paper: Blue Paper Bin: newspapers, magazines, and office paper.\n- textile: Textile Bin: used clothing, shoes, and fabrics.\n- electronics: Electronics / E-Waste Bin: small electronic appliances and devices.\n- cardboard: Cardboard Cage / Bin: large flattened cardboard boxes.\n- bulky_waste: Bulky Waste Container: large items like old furniture and mattresses.\n- bottle_recycling_machine: Bottle Recycling Machine: reverse vending machine (RVM) for deposit bottles.\n- yard_waste: Yard Waste / Pruning: tree branches, leaves, and garden trimmings.",
             "default": null
           },
           "latitude": {
@@ -91,15 +96,19 @@
             "type": "string",
             "nullable": true,
             "enum": [
+              "general_waste",
+              "packaging",
               "glass",
               "paper",
-              "plastic",
-              "metal",
+              "textile",
               "electronics",
-              "mixed",
+              "cardboard",
+              "bulky_waste",
+              "bottle_recycling_machine",
+              "yard_waste",
               null
             ],
-            "description": "Stable map icon key; use a generic icon when null.",
+            "description": "Stable map icon key; null means unknown (use a generic icon).\n- general_waste: Green Bin: general / mixed municipal waste.\n- packaging: Orange Packaging Bin: plastic, metal, and beverage carton packaging.\n- glass: Purple Glass Bin: glass bottles and food jars.\n- paper: Blue Paper Bin: newspapers, magazines, and office paper.\n- textile: Textile Bin: used clothing, shoes, and fabrics.\n- electronics: Electronics / E-Waste Bin: small electronic appliances and devices.\n- cardboard: Cardboard Cage / Bin: large flattened cardboard boxes.\n- bulky_waste: Bulky Waste Container: large items like old furniture and mattresses.\n- bottle_recycling_machine: Bottle Recycling Machine: reverse vending machine (RVM) for deposit bottles.\n- yard_waste: Yard Waste / Pruning: tree branches, leaves, and garden trimmings.",
             "example": "paper"
           },
           "latitude": {

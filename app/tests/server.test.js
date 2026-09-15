@@ -166,7 +166,10 @@ test('GET /ready fails when the database is unavailable', async () => {
 });
 
 for (const endpoint of ['/api/bins', '/api/bins/nearest']) {
-  for (const type of ['glass', 'paper', 'plastic', 'metal', 'electronics', 'mixed', null]) {
+  for (const type of [
+    'general_waste', 'packaging', 'glass', 'paper', 'textile', 'electronics',
+    'cardboard', 'bulky_waste', 'bottle_recycling_machine', 'yard_waste', null
+  ]) {
     test(`${endpoint} returns map metadata for type ${type}`, async (t) => {
       const row = {
         id: 2,
@@ -203,7 +206,7 @@ for (const endpoint of ['/api/bins', '/api/bins/nearest']) {
 
   for (const [field, values] of Object.entries({
     address: [undefined, '', ' \t\n ', 123, {}, []],
-    type: [undefined, '', 'wood', 'Paper', ' paper ', 123, {}, []]
+    type: [undefined, '', 'mixed', 'plastic', 'metal', 'wood', 'Paper', ' paper ', 123, {}, []]
   })) {
     for (const value of values) {
       test(`${endpoint} rejects invalid ${field}: ${JSON.stringify(value)}`, async () => {
@@ -234,7 +237,12 @@ test('Swagger documents map metadata on both bin endpoints', () => {
   assert.equal(schema.properties.address.nullable, true);
   assert.equal(schema.properties.type.nullable, true);
   assert.deepEqual(schema.properties.type.enum,
-    ['glass', 'paper', 'plastic', 'metal', 'electronics', 'mixed', null]);
+    ['general_waste', 'packaging', 'glass', 'paper', 'textile', 'electronics',
+      'cardboard', 'bulky_waste', 'bottle_recycling_machine', 'yard_waste', null]);
+  assert.deepEqual(swaggerSpec.components.schemas.CreateBinRequest.properties.type.enum,
+    schema.properties.type.enum);
+  assert.match(schema.properties.type.description, /Green Bin/);
+  assert.match(schema.properties.type.description, /Orange Packaging Bin/);
   for (const endpoint of ['/api/bins', '/api/bins/nearest']) {
     assert.ok(swaggerSpec.paths[endpoint].get.responses['200']);
   }

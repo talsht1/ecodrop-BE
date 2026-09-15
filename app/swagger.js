@@ -1,6 +1,6 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 const path = require('node:path');
-const { BIN_TYPES, CREATE_BIN_SCHEMA } = require('./schemas/bin');
+const { BIN_TYPE_SCHEMA, CREATE_BIN_SCHEMA } = require('./schemas/bin');
 const pkg = require('../package.json');
 
 const options = {
@@ -34,10 +34,7 @@ const options = {
               example: 'Central Park, New York, NY'
             },
             type: {
-              type: 'string',
-              nullable: true,
-              enum: [...BIN_TYPES, null],
-              description: 'Stable map icon key; use a generic icon when null.',
+              ...BIN_TYPE_SCHEMA,
               example: 'paper'
             },
             latitude: { type: 'number' },

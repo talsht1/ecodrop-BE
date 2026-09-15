@@ -19,12 +19,23 @@ async function seedSampleData() {
       CREATE INDEX IF NOT EXISTS bins_location_gist_idx
       ON bins USING GIST (location);
     `);
-    const migration = readFileSync(path.join(
+    const metadataColumns = await pool.query(`
+      SELECT COUNT(*)::int AS total
+      FROM pg_attribute
+      WHERE attrelid = 'bins'::regclass
+        AND attname IN ('address', 'type') AND NOT attisdropped;
+    `);
+    // Do not replay the old metadata backfill after replacing the type constraint.
+    const metadataMigration = metadataColumns.rows[0].total === 2 ? '' : readFileSync(path.join(
       __dirname, '..', '..', 'supabase', 'migrations',
       '20260914151214_add_bin_address_and_type.sql'
     ), 'utf8');
+    const typeMigration = readFileSync(path.join(
+      __dirname, '..', '..', 'supabase', 'migrations',
+      '20260915060000_replace_bin_types.sql'
+    ), 'utf8');
     const seed = readFileSync(path.join(__dirname, '..', '..', 'supabase', 'seed.sql'), 'utf8');
-    await pool.query(`BEGIN;\n${migration}\n${seed}\nCOMMIT;`);
+    await pool.query(`BEGIN;\n${metadataMigration}\n${typeMigration}\n${seed}\nCOMMIT;`);
 
     const result = await pool.query('SELECT COUNT(*) AS total FROM bins;');
     console.log(`Seeded ${result.rows[0].total} bins.`);
